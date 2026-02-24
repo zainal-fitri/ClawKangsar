@@ -1,0 +1,38 @@
+# Upstream reference clone (read-only source study)
+PicoClaw-reference/
+
+# Go build artifacts
+bin/
+dist/
+build/
+*.exe
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+
+# Go module/workspace helpers
+go.work
+go.work.sum
+
+# Runtime state and local storage
+data/
+*.db
+*.db-journal
+*.db-shm
+*.db-wal
+*.sqlite
+*.sqlite3
+
+# Logs and temp files
+*.log
+*.tmp
+tmp/
+temp/
+
+# OS/editor artifacts
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/

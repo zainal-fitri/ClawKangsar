@@ -1,0 +1,30 @@
+{
+  "log_level": "INFO",
+  "system_prompt": "You are ClawKangsar, a professional assistant running on a Raspberry Pi. Keep responses concise and use your browser tool only when real-time data is needed.",
+  "whatsapp": {
+    "enabled": false,
+    "session_dsn": "file:clawkangsar_whatsapp.db?_foreign_keys=on"
+  },
+  "telegram": {
+    "enabled": false,
+    "token": "",
+    "allow_list": [
+      123456789
+    ]
+  },
+  "browser": {
+    "idle_timeout_seconds": 300
+  },
+  "storage": {
+    "session_dir": "data/sessions"
+  },
+  "health": {
+    "enabled": true,
+    "host": "0.0.0.0",
+    "port": 18080
+  },
+  "tools": {
+    "web_fetch_timeout_seconds": 20,
+    "web_fetch_max_chars": 4000
+  }
+}
