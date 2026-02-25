@@ -36,3 +36,8 @@ temp/
 Thumbs.db
 .idea/
 .vscode/
+
+# Local planning/docs (exclude from future commits)
+TODO.md
+PORTING_MAP.md
+PRD.md

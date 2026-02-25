@@ -60,18 +60,6 @@ Exit codes:
 - `1`: fail (RSS above limit)
 - `2`: environment/runtime error
 
-## Git guide (for later)
-This folder is currently not a git repo. Initialize and push when ready:
-
-```bash
-git init
-git branch -M main
-git add .
-git commit -m "feat: bootstrap ClawKangsar core + gateways + tools"
-git remote add origin <your-repo-url>
-git push -u origin main
-```
-
 If you do not want to version the upstream reference clone, exclude `PicoClaw-reference/` before `git add .` (or add it to `.gitignore`).
 
 ## Project docs
