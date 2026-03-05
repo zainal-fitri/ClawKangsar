@@ -43,22 +43,26 @@
     "command_timeout_seconds": 20,
     "default_log_lines": 80,
     "max_log_lines": 200,
-    "shell_enabled": false,
+    "shell_enabled": true,
     "shell_commands": {
       "uptime": "uptime",
-      "disk_free": "df -h /"
+      "disk_free": "df -h /",
+      "mem_free": "free -m",
+      "cpu_temp": "vcgencmd measure_temp || cat /sys/class/thermal/thermal_zone0/temp"
     },
-    "systemctl_enabled": false,
+    "systemctl_enabled": true,
     "systemctl_allow_services": [
-      "clawkangsar.service"
+      "clawkangsar.service",
+      "tailscaled.service",
+      "caddy.service"
     ],
     "docker_enabled": false,
-    "docker_allow_containers": [
-      "homeassistant"
-    ],
-    "journal_enabled": false,
+    "docker_allow_containers": [],
+    "journal_enabled": true,
     "journal_allow_units": [
-      "clawkangsar.service"
+      "clawkangsar.service",
+      "tailscaled.service",
+      "caddy.service"
     ]
   }
 }

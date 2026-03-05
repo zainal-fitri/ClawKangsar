@@ -43,22 +43,28 @@
     "command_timeout_seconds": 20,
     "default_log_lines": 80,
     "max_log_lines": 200,
-    "shell_enabled": false,
+    "shell_enabled": true,
     "shell_commands": {
       "uptime": "uptime",
-      "disk_free": "df -h /"
+      "disk_free": "df -h /",
+      "mem_free": "free -m",
+      "docker_health": "docker info --format '{{.ServerVersion}}'"
     },
-    "systemctl_enabled": false,
+    "systemctl_enabled": true,
     "systemctl_allow_services": [
-      "clawkangsar.service"
+      "clawkangsar.service",
+      "docker.service"
     ],
-    "docker_enabled": false,
+    "docker_enabled": true,
     "docker_allow_containers": [
-      "homeassistant"
+      "homeassistant",
+      "traefik",
+      "portainer"
     ],
-    "journal_enabled": false,
+    "journal_enabled": true,
     "journal_allow_units": [
-      "clawkangsar.service"
+      "clawkangsar.service",
+      "docker.service"
     ]
   }
 }

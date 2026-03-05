@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"flag"
+	"fmt"
 	"log/slog"
 	"os"
 	"os/signal"
@@ -12,11 +13,14 @@ import (
 	"syscall"
 	"time"
 
+	"clawkangsar/internal/auth"
 	"clawkangsar/internal/config"
 	"clawkangsar/internal/core"
 	"clawkangsar/internal/gateway/telegram"
 	"clawkangsar/internal/gateway/whatsapp"
 	"clawkangsar/internal/health"
+	"clawkangsar/internal/llm"
+	"clawkangsar/internal/setup"
 	"clawkangsar/internal/tools"
 	"clawkangsar/internal/version"
 )
@@ -44,6 +48,27 @@ type statusTracker struct {
 }
 
 func main() {
+	args := os.Args[1:]
+	if len(args) > 0 && !strings.HasPrefix(args[0], "-") {
+		switch args[0] {
+		case "auth":
+			if err := runAuthCommand(args[1:]); err != nil {
+				slog.Error("auth command failed", "error", err)
+				os.Exit(1)
+			}
+			return
+		case "setup":
+			if err := runSetupCommand(args[1:]); err != nil {
+				slog.Error("setup command failed", "error", err)
+				os.Exit(1)
+			}
+			return
+		default:
+			slog.Error("unknown command", "command", args[0])
+			os.Exit(1)
+		}
+	}
+
 	configPath := flag.String("config", "config.json", "Path to configuration file")
 	flag.Parse()
 
@@ -73,8 +98,42 @@ func main() {
 		time.Duration(cfg.Tools.WebFetchTimeoutSeconds)*time.Second,
 		cfg.Tools.WebFetchMaxChars,
 	)
+	serverControl := tools.NewServerControl(logger.With("component", "server_tools"), tools.ServerControlOptions{
+		TimeoutSeconds:         cfg.Tools.CommandTimeoutSeconds,
+		DefaultLogLines:        cfg.Tools.DefaultLogLines,
+		MaxLogLines:            cfg.Tools.MaxLogLines,
+		ShellEnabled:           cfg.Tools.ShellEnabled,
+		ShellCommands:          cfg.Tools.ShellCommands,
+		SystemctlEnabled:       cfg.Tools.SystemctlEnabled,
+		SystemctlAllowServices: cfg.Tools.SystemctlAllowServices,
+		DockerEnabled:          cfg.Tools.DockerEnabled,
+		DockerAllowContainers:  cfg.Tools.DockerAllowContainers,
+		JournalEnabled:         cfg.Tools.JournalEnabled,
+		JournalAllowUnits:      cfg.Tools.JournalAllowUnits,
+	})
 
-	agent := core.NewAgent(cfg.SystemPrompt, browser, webFetcher, sessionStore)
+	var provider core.ChatProvider
+	if cfg.LLM.Enabled {
+		switch strings.ToLower(strings.TrimSpace(cfg.LLM.Provider)) {
+		case "openai_compat", "openai-compatible", "openai":
+			provider, err = llm.NewOpenAICompatProvider(cfg.LLM)
+			if err != nil {
+				logger.Error("failed to initialize llm provider", "provider", cfg.LLM.Provider, "error", err)
+				os.Exit(1)
+			}
+		case "codex_oauth", "openai_oauth", "codex":
+			provider, err = llm.NewCodexOAuthProvider(cfg.LLM)
+			if err != nil {
+				logger.Error("failed to initialize llm provider", "provider", cfg.LLM.Provider, "error", err)
+				os.Exit(1)
+			}
+		default:
+			logger.Error("unsupported llm provider", "provider", cfg.LLM.Provider)
+			os.Exit(1)
+		}
+	}
+
+	agent := core.NewAgent(cfg.SystemPrompt, browser, webFetcher, serverControl, provider, sessionStore)
 
 	runners, err := buildRunners(cfg, agent, logger)
 	if err != nil {
@@ -129,6 +188,49 @@ func main() {
 	logger.Info("shutdown signal received", "app", version.AppName)
 	wg.Wait()
 	logger.Info("service stopped", "app", version.AppName)
+}
+
+func runAuthCommand(args []string) error {
+	if len(args) == 0 {
+		return errors.New("missing auth target; supported: codex")
+	}
+
+	switch args[0] {
+	case "codex":
+		fs := flag.NewFlagSet("auth codex", flag.ContinueOnError)
+		fs.SetOutput(os.Stdout)
+		force := fs.Bool("force", false, "Force interactive Codex re-login")
+		codexAuthPath := fs.String("codex-auth-path", "", "Override path to Codex auth.json")
+		if err := fs.Parse(args[1:]); err != nil {
+			if errors.Is(err, flag.ErrHelp) {
+				return nil
+			}
+			return err
+		}
+		return auth.EnsureCodexLogin(*codexAuthPath, *force, os.Stdout, os.Stderr)
+	default:
+		return fmt.Errorf("unsupported auth target: %s", args[0])
+	}
+}
+
+func runSetupCommand(args []string) error {
+	fs := flag.NewFlagSet("setup", flag.ContinueOnError)
+	fs.SetOutput(os.Stdout)
+	configPath := fs.String("config", "config.json", "Path to write configuration file")
+	profile := fs.String("profile", "", "Starter profile: systemd-first, docker-first, home-assistant")
+	force := fs.Bool("force", false, "Overwrite existing config after automatic backup")
+	if err := fs.Parse(args); err != nil {
+		if errors.Is(err, flag.ErrHelp) {
+			return nil
+		}
+		return err
+	}
+
+	return setup.Run(setup.Options{
+		ConfigPath: *configPath,
+		Profile:    *profile,
+		Force:      *force,
+	}, os.Stdin, os.Stdout, os.Stderr)
 }
 
 func buildRunners(cfg config.Config, processor core.Processor, logger *slog.Logger) ([]runner, error) {
